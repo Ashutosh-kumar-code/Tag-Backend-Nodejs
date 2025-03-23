@@ -37,13 +37,13 @@ router.post('/login', async (req, res) => {
 });
 
 // Get all creators and brands separately with filters
-router.get('/users', async (req, res) => {
+router.post('/users', async (req, res) => {
     try {
-        const { role, name, category, email } = req.query;
+        const { role, name, topic, email } = req.body;
         const filter = {};
         if (role) filter.role = role;
         if (name) filter.name = { $regex: name, $options: 'i' };
-        if (category) filter.category = category;
+        if (topic) filter.topic = topic;
         if (email) filter.email = email;
 
         const users = await User.find(filter);
