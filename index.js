@@ -20,6 +20,10 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.log(err));
 
+app.get("/", (req,res)=>{
+    res.send("Hello, this is the Tag App Backend!");
+})
+
 app.use('/api/auth', authRoutes);
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/admin', adminRoutes);
