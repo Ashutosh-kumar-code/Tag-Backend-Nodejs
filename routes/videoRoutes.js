@@ -1,18 +1,111 @@
 const express = require('express');
 const Video = require('../models/Video');
+const multer = require('multer');
+const path = require('path');
+const mongoose = require('mongoose');
+
 const router = express.Router();
 
-// Post a video by Creator
-router.post('/post/creator', async (req, res) => {
-    try {
-        const { creatorId, title, description, videoUrl, thumbnailUrl, category, type } = req.body;
-        const newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
-        await newVideo.save();
-        res.status(201).json({ message: 'Video posted by creator successfully', video: newVideo });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/videos'); // Store videos in "uploads/videos"
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
     }
 });
+
+const upload = multer({ storage: storage });
+
+// Post a video by Creator
+router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
+    try {
+        const { creatorId, title, description, category, type, thumbnailUrl } = req.body;
+
+        // 🔹 Ensure `creatorId` is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+            return res.status(400).json({ message: "Invalid creatorId format" });
+        }
+        const creatorObjectId = new mongoose.Types.ObjectId(creatorId);
+
+        // 🔹 Ensure thumbnailUrl is provided
+        // if (!thumbnailUrl) {
+        //     return res.status(400).json({ message: "thumbnailUrl is required" });
+        // }
+
+        // 🔹 Ensure a file was uploaded
+        if (!req.file) {
+            return res.status(400).json({ message: "No video file uploaded" });
+        }
+
+        // 🔹 Save the video in MongoDB
+        const newVideo = new Video({ 
+            creatorId: creatorObjectId, 
+            title, 
+            description, 
+            videoUrl: `/uploads/videos/${req.file.filename}`, 
+            thumbnailUrl, 
+            category, 
+            type 
+        });
+
+        await newVideo.save();
+
+        res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
+
+    } catch (error) {
+        console.error("Error saving video:", error);
+        res.status(500).json({ message: 'Server error', error });
+    }
+});
+
+// Multer Storage Configuration
+// const storage = multer.diskStorage({
+//     destination: function (req, file, cb) {
+//         cb(null, 'uploads/videos'); // Store videos in "uploads/videos"
+//     },
+//     filename: function (req, file, cb) {
+//         cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+//     }
+// });
+
+// const upload = multer({ storage: storage });
+
+// // Post a video by Creator
+// router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
+//     try {
+//         const { creatorId, title, description, category, type, thumbnailUrl } = req.body;
+        
+//         // Convert creatorId to ObjectId
+//         if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+//             return res.status(400).json({ message: "Invalid creatorId format" });
+//         }
+//         const creatorObjectId = new mongoose.Types.ObjectId(creatorId);
+
+//         // Ensure thumbnail URL is provided
+//         if (!thumbnailUrl) {
+//             return res.status(400).json({ message: "thumbnailUrl is required" });
+//         }
+
+//         // Save the video
+//         const newVideo = new Video({ 
+//             creatorId: creatorObjectId, 
+//             title, 
+//             description, 
+//             videoUrl: `/uploads/videos/${req.file.filename}`, 
+//             thumbnailUrl, 
+//             category, 
+//             type 
+//         });
+
+//         await newVideo.save();
+//         res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
+
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error', error });
+//     }
+// });
 
 // Post a video by Brand
 router.post('/post/brand', async (req, res) => {
@@ -37,6 +130,16 @@ router.post('/post/creator-from-brand', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+router.get('/all', async (req, res) => {
+    try {
+        const videos = await Video.find();
+        res.status(200).json(videos);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
+    }
+});
+
 
 // Get all videos with optional filtering by category, type, creator, or brand
 router.get('/list', async (req, res) => {
