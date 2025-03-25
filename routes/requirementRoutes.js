@@ -5,8 +5,8 @@ const router = express.Router();
 // Post a requirement
 router.post('/post', async (req, res) => {
     try {
-        const { brandId, title, description, category } = req.body;
-        const newRequirement = new Requirement({ brandId, title, description, category });
+        const { brandId, title, description, category, budget, totalNeed } = req.body;
+        const newRequirement = new Requirement({ brandId, title, description, category, budget, totalNeed });
         await newRequirement.save();
         res.status(201).json({ message: 'Requirement posted successfully', requirement: newRequirement });
     } catch (error) {

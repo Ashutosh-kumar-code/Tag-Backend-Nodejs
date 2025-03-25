@@ -53,6 +53,22 @@ router.put('/update', async (req, res) => {
     }
 });
 
+// Get Profile Info
+router.get('/profile/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Find user and exclude password field
+        const user = await User.findById(userId).select('-password');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        res.json({ user });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 // Delete Account
 router.delete('/delete', async (req, res) => {
     try {

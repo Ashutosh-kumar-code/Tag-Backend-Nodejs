@@ -176,7 +176,7 @@ router.get('/list/videos', async (req, res) => {
 // Delete a video by its creator or brand
 router.delete('/delete/:videoId', async (req, res) => {
     try {
-        const { userId, role } = req.body; // Assume userId and role are provided in request
+        const { userId } = req.body; // Assume userId and role are provided in request
         const video = await Video.findById(req.params.videoId);
         
         if (!video) return res.status(404).json({ message: 'Video not found' });
