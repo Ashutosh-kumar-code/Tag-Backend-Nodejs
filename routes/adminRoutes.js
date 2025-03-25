@@ -1,6 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
 const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Video = require('../models/Video');
@@ -67,16 +69,45 @@ router.delete('/delete-user/:userId', async (req, res) => {
 });
 
 // Admin delete any video
+// router.delete('/delete-video/:videoId', async (req, res) => {
+//     try {
+//         const video = await Video.findById(req.params.videoId);
+//         if (!video) return res.status(404).json({ message: 'Video not found' });
+
+//         await video.deleteOne();
+//         res.json({ message: 'Video deleted successfully by admin' });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
+
+
 router.delete('/delete-video/:videoId', async (req, res) => {
     try {
-        const video = await Video.findById(req.params.videoId);
+        const { videoId } = req.params;
+
+        // Find the video by ID
+        const video = await Video.findById(videoId);
         if (!video) return res.status(404).json({ message: 'Video not found' });
 
-        await video.deleteOne();
+        // Get video file path
+        const videoPath = path.join(__dirname, '..', 'uploads', 'videos', path.basename(video.videoUrl));
+
+        // Delete video file from uploads folder
+        if (fs.existsSync(videoPath)) {
+            fs.unlinkSync(videoPath);
+        }
+
+        // Remove the video from the database
+        await Video.findByIdAndDelete(videoId);
+
         res.json({ message: 'Video deleted successfully by admin' });
+
     } catch (error) {
+        console.error("Error deleting video:", error);
         res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 module.exports = router;
