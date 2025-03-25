@@ -29,11 +29,6 @@ router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
         }
         const creatorObjectId = new mongoose.Types.ObjectId(creatorId);
 
-        // 🔹 Ensure thumbnailUrl is provided
-        // if (!thumbnailUrl) {
-        //     return res.status(400).json({ message: "thumbnailUrl is required" });
-        // }
-
         // 🔹 Ensure a file was uploaded
         if (!req.file) {
             return res.status(400).json({ message: "No video file uploaded" });
