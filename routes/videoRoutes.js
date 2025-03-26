@@ -11,46 +11,40 @@ const router = express.Router();
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'videos', // Folder name in Cloudinary
-        resource_type: 'video', // Video file type
+        folder: 'videos', // Folder in Cloudinary
+        resource_type: 'video', // Ensure videos are properly uploaded
+        format: async (req, file) => 'mp4', // Set default format
+        public_id: (req, file) => Date.now(), // Unique filename
     },
 });
 
 const upload = multer({ storage });
-// const upload = multer({ storage: storage });
 
-// Post a video or sort
+// 🔹 Upload Video API (Fix for Vercel)
 router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
     try {
-        const { creatorId,brandId, title, description, category, type, thumbnailUrl } = req.body;
+        const { creatorId, brandId, title, description, category, type, thumbnailUrl } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: "No video file uploaded" });
         }
 
+        console.log("Uploaded File:", req.file); // Debugging
+
+        // Cloudinary returns `req.file.path.secure_url`
+        const videoUrl = req.file.path || req.file.secure_url;
+
+        if (!videoUrl) {
+            return res.status(500).json({ message: "Error retrieving Cloudinary URL" });
+        }
+
         // Save video data to MongoDB
-        var newVideo;
-        if(creatorId){
-         newVideo = new Video({ 
-            creatorId, 
-            title, 
-            description, 
-            videoUrl: req.file.path, // Cloudinary URL
-            thumbnailUrl, 
-            category, 
-            type 
-        });
-    }else if(brandId){
-         newVideo = new Video({ 
-            brandId, 
-            title, 
-            description, 
-            videoUrl: req.file.path, // Cloudinary URL
-            thumbnailUrl, 
-            category, 
-            type 
-        });
-    }
+        let newVideo;
+        if (creatorId) {
+            newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
+        } else if (brandId) {
+            newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
+        }
 
         await newVideo.save();
 
@@ -61,6 +55,59 @@ router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
         res.status(500).json({ message: 'Server error', error });
     }
 });
+
+// const storage = new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//         folder: 'videos', // Folder name in Cloudinary
+//         resource_type: 'video', // Video file type
+//     },
+// });
+
+// const upload = multer({ storage });
+
+// // Post a video or sort
+// router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
+//     try {
+//         const { creatorId,brandId, title, description, category, type, thumbnailUrl } = req.body;
+
+//         if (!req.file) {
+//             return res.status(400).json({ message: "No video file uploaded" });
+//         }
+
+//         // Save video data to MongoDB
+//         var newVideo;
+//         if(creatorId){
+//          newVideo = new Video({ 
+//             creatorId, 
+//             title, 
+//             description, 
+//             videoUrl: req.file.path, // Cloudinary URL
+//             thumbnailUrl, 
+//             category, 
+//             type 
+//         });
+//     }else if(brandId){
+//          newVideo = new Video({ 
+//             brandId, 
+//             title, 
+//             description, 
+//             videoUrl: req.file.path, // Cloudinary URL
+//             thumbnailUrl, 
+//             category, 
+//             type 
+//         });
+//     }
+
+//         await newVideo.save();
+
+//         res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
+
+//     } catch (error) {
+//         console.error("Error uploading video:", error);
+//         res.status(500).json({ message: 'Server error', error });
+//     }
+// });
 
 
 
