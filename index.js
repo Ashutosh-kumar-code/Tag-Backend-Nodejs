@@ -31,7 +31,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/follow', followRoutes);
+app.use('/api/friend', followRoutes);
 app.use('/api/videos', videoRoutes);
 
 const PORT = process.env.PORT || 5000;
