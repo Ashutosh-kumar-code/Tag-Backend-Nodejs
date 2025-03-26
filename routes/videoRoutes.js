@@ -65,7 +65,6 @@ router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
 
 
 
-
 // Post a video by Brand
 // router.post('/post/brand', async (req, res) => {
 //     try {
