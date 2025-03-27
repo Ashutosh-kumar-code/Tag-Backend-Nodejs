@@ -1,5 +1,6 @@
 const express = require('express');
 const Video = require('../models/Video');
+const Admin = require('../models/Admin');
 const multer = require('multer');
 const path = require('path');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -261,7 +262,7 @@ router.delete('/admin/delete/:videoId', async (req, res) => {
         }
 
         // Fetch admin data
-        const admin = await User.findById(adminId);
+        const admin = await Admin.findById(adminId);
         if (!admin || admin.role !== 'admin') {
             return res.status(403).json({ message: "Only admin can delete videos" });
         }
