@@ -246,6 +246,10 @@ router.delete('/admin/delete/:videoId', async (req, res) => {
         const { videoId } = req.params;
         const { adminId } = req.body; // Admin making the request
 
+         if (!adminId) {
+            return res.status(400).json({ message: "Admin ID is required!" });
+        }
+
         if (!mongoose.Types.ObjectId.isValid(videoId)) {
             return res.status(400).json({ message: "Invalid videoId format" });
         }
