@@ -242,12 +242,62 @@ router.delete('/delete/:videoId', async (req, res) => {
 
 
 // DELETE Video (Admin Only)
+// router.delete('/admin/delete/:videoId', async (req, res) => {
+//     try {
+//         const { videoId } = req.params;
+//         const { adminId } = req.body; // Admin making the request
+
+//          if (!adminId) {
+//             return res.status(400).json({ message: "Admin ID is required!" });
+//         }
+
+//         if (!mongoose.Types.ObjectId.isValid(videoId)) {
+//             return res.status(400).json({ message: "Invalid videoId format" });
+//         }
+
+//         // Fetch the video
+//         const video = await Video.findById(videoId);
+//         if (!video) {
+//             return res.status(404).json({ message: "Video not found" });
+//         }
+
+//         // Fetch admin data
+//         const admin = await Admin.findById(adminId);
+//         if (!admin || admin.role !== 'admin') {
+//             return res.status(403).json({ message: "Only admin can delete videos" });
+//         }
+
+//         // 🔹 Delete from Cloudinary if it's a Cloudinary URL
+//         if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
+//             const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Extract Cloudinary public_id
+//             await cloudinary.uploader.destroy(`videos/${publicId}`, { resource_type: "video" });
+//         } 
+//         // 🔹 Delete from Local Storage
+//         else {
+//             const filePath = path.join(__dirname, '..', video.videoUrl);
+//             fs.unlink(filePath, (err) => {
+//                 if (err) {
+//                     console.error("Error deleting file:", err);
+//                 }
+//             });
+//         }
+
+//         // 🔹 Delete from MongoDB
+//         await Video.findByIdAndDelete(videoId);
+//         return res.json({ message: "Video deleted successfully by admin" });
+
+//     } catch (error) {
+//         console.error("Error deleting video:", error);
+//         res.status(500).json({ message: "Server error", error });
+//     }
+// });
+
 router.delete('/admin/delete/:videoId', async (req, res) => {
     try {
         const { videoId } = req.params;
-        const { adminId } = req.body; // Admin making the request
+        const { adminId } = req.query; // 🔹 Changed from req.body to req.query
 
-         if (!adminId) {
+        if (!adminId) {
             return res.status(400).json({ message: "Admin ID is required!" });
         }
 
@@ -263,7 +313,8 @@ router.delete('/admin/delete/:videoId', async (req, res) => {
 
         // Fetch admin data
         const admin = await Admin.findById(adminId);
-        if (!admin || admin.role !== 'admin') {
+        // console.log("===========", admin,adminId )
+        if (!admin) {
             return res.status(403).json({ message: "Only admin can delete videos" });
         }
 
