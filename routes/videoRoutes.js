@@ -57,73 +57,6 @@ router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
     }
 });
 
-// const storage = new CloudinaryStorage({
-//     cloudinary: cloudinary,
-//     params: {
-//         folder: 'videos', // Folder name in Cloudinary
-//         resource_type: 'video', // Video file type
-//     },
-// });
-
-// const upload = multer({ storage });
-
-// // Post a video or sort
-// router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
-//     try {
-//         const { creatorId,brandId, title, description, category, type, thumbnailUrl } = req.body;
-
-//         if (!req.file) {
-//             return res.status(400).json({ message: "No video file uploaded" });
-//         }
-
-//         // Save video data to MongoDB
-//         var newVideo;
-//         if(creatorId){
-//          newVideo = new Video({ 
-//             creatorId, 
-//             title, 
-//             description, 
-//             videoUrl: req.file.path, // Cloudinary URL
-//             thumbnailUrl, 
-//             category, 
-//             type 
-//         });
-//     }else if(brandId){
-//          newVideo = new Video({ 
-//             brandId, 
-//             title, 
-//             description, 
-//             videoUrl: req.file.path, // Cloudinary URL
-//             thumbnailUrl, 
-//             category, 
-//             type 
-//         });
-//     }
-
-//         await newVideo.save();
-
-//         res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
-
-//     } catch (error) {
-//         console.error("Error uploading video:", error);
-//         res.status(500).json({ message: 'Server error', error });
-//     }
-// });
-
-
-
-
-// Post a video by Brand
-// router.post('/post/brand', async (req, res) => {
-//     try {
-//         const { brandId, title, description, videoUrl, thumbnailUrl, category, type } = req.body;
-//         const newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
-//         await newVideo.save();
-//         res.status(201).json({ message: 'Video posted by brand successfully', video: newVideo });
-//     } catch (error) {
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
 
 // Post a video by Creator from Brand's profile
 // router.post('/post/creator-from-brand', async (req, res) => {
@@ -242,56 +175,6 @@ router.delete('/delete/:videoId', async (req, res) => {
 
 
 // DELETE Video (Admin Only)
-// router.delete('/admin/delete/:videoId', async (req, res) => {
-//     try {
-//         const { videoId } = req.params;
-//         const { adminId } = req.body; // Admin making the request
-
-//          if (!adminId) {
-//             return res.status(400).json({ message: "Admin ID is required!" });
-//         }
-
-//         if (!mongoose.Types.ObjectId.isValid(videoId)) {
-//             return res.status(400).json({ message: "Invalid videoId format" });
-//         }
-
-//         // Fetch the video
-//         const video = await Video.findById(videoId);
-//         if (!video) {
-//             return res.status(404).json({ message: "Video not found" });
-//         }
-
-//         // Fetch admin data
-//         const admin = await Admin.findById(adminId);
-//         if (!admin || admin.role !== 'admin') {
-//             return res.status(403).json({ message: "Only admin can delete videos" });
-//         }
-
-//         // 🔹 Delete from Cloudinary if it's a Cloudinary URL
-//         if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
-//             const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Extract Cloudinary public_id
-//             await cloudinary.uploader.destroy(`videos/${publicId}`, { resource_type: "video" });
-//         } 
-//         // 🔹 Delete from Local Storage
-//         else {
-//             const filePath = path.join(__dirname, '..', video.videoUrl);
-//             fs.unlink(filePath, (err) => {
-//                 if (err) {
-//                     console.error("Error deleting file:", err);
-//                 }
-//             });
-//         }
-
-//         // 🔹 Delete from MongoDB
-//         await Video.findByIdAndDelete(videoId);
-//         return res.json({ message: "Video deleted successfully by admin" });
-
-//     } catch (error) {
-//         console.error("Error deleting video:", error);
-//         res.status(500).json({ message: "Server error", error });
-//     }
-// });
-
 router.delete('/admin/delete/:videoId', async (req, res) => {
     try {
         const { videoId } = req.params;
@@ -339,6 +222,28 @@ router.delete('/admin/delete/:videoId', async (req, res) => {
 
     } catch (error) {
         console.error("Error deleting video:", error);
+        res.status(500).json({ message: "Server error", error });
+    }
+});
+
+// get videos for brand and user profile
+router.get('/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        // Fetch videos where the user is either a creator or a brand
+        const videos = await Video.find({
+            $or: [{ creatorId: userId }, { brandId: userId }]
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({ videos });
+
+    } catch (error) {
+        console.error("Error fetching videos:", error);
         res.status(500).json({ message: "Server error", error });
     }
 });
