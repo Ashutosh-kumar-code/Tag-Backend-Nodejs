@@ -51,4 +51,16 @@ router.get('/following/:userId', async (req, res) => {
     }
 });
 
+// get total followers of a user 
+router.get('/followers/:userId', async (req, res) => {
+    try {
+        const followers = await User.find({ following: req.params.userId }).select('name email role');
+        
+        res.json({ totalFollowers: followers.length, followers });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 module.exports = router;
