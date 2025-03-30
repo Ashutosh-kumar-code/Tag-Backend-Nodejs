@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Video = require('../models/Video');
 const router = express.Router();
 
 // Signup Route
@@ -78,6 +79,139 @@ router.delete('/delete', async (req, res) => {
         res.json({ message: 'Account deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Dashboard bar graph api
+router.get('/all-registrations-graph', async (req, res) => {
+    try {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+        const registrations = await User.aggregate([
+            {
+                $match: { createdAt: { $gte: oneYearAgo } } // Filter users registered in the last year
+            },
+            {
+                $group: {
+                    _id: { 
+                        month: { $month: "$createdAt" }, 
+                        year: { $year: "$createdAt" } 
+                    },
+                    totalBrands: { 
+                        $sum: { $cond: [{ $eq: ["$role", "brand"] }, 1, 0] } 
+                    },
+                    totalCreators: { 
+                        $sum: { $cond: [{ $eq: ["$role", "creator"] }, 1, 0] } 
+                    }
+                }
+            },
+            {
+                $sort: { "_id.year": 1, "_id.month": 1 } // Sort by year and month
+            }
+        ]);
+
+        const monthlyData = Array(12).fill({ brands: 0, creators: 0 });
+
+        registrations.forEach((record) => {
+            const index = record._id.month - 1;
+            monthlyData[index] = {
+                brands: record.totalBrands,
+                creators: record.totalCreators,
+            };
+        });
+
+        res.json({
+            success: true,
+            data: monthlyData,
+        });
+    } catch (error) {
+        console.error('Error fetching registrations:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Dashboard droughnut graph api
+router.get('/user-counts', async (req, res) => {
+    try {
+        const brandsCount = await User.countDocuments({ role: 'brand' });
+        const creatorsCount = await User.countDocuments({ role: 'creator' });
+
+        res.json({
+            success: true,
+            data: {
+                brands: brandsCount,
+                creators: creatorsCount,
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching user counts:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// get counts of totals, show in dashboard 
+router.get('/total-stats', async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalCreators = await User.countDocuments({ role: 'creator' });
+        const totalBrands = await User.countDocuments({ role: 'brand' });
+        const totalVideos = await Video.countDocuments({ type: 'video' });
+        const totalShorts = await Video.countDocuments({ type: 'short' });
+
+        res.json({
+            success: true,
+            data: {
+                totalUsers,
+                totalCreators,
+                totalBrands,
+                totalVideos,
+                totalShorts,
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching statistics:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// get api of leaderboard
+router.get('/leaderboard', async (req, res) => {
+    try {
+        const creators = await User.find({ role: 'creator' })
+            .select('name email following')
+            .lean();
+
+        const leaderboard = await Promise.all(
+            creators.map(async (creator) => {
+                const videoCount = await Video.countDocuments({ creatorId: creator._id });
+                const followerCount = creator.following.length;
+
+                const totalScore = videoCount + followerCount;
+
+                return totalScore > 1
+                    ? {
+                          creatorId: creator._id,
+                          name: creator.name,
+                          email: creator.email,
+                          videoCount,
+                          followerCount,
+                          totalScore,
+                      }
+                    : null;
+            })
+        );
+
+        // Filter out null values and sort by totalScore (descending order)
+        const filteredLeaderboard = leaderboard
+            .filter((entry) => entry !== null)
+            .sort((a, b) => b.totalScore - a.totalScore)
+            .slice(0, 50); // Limit to top 50
+
+        res.json({ success: true, leaderboard: filteredLeaderboard });
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
