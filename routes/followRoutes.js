@@ -62,5 +62,29 @@ router.get('/followers/:userId', async (req, res) => {
     }
 });
 
+// Get followers and following count of a user
+router.get('/follow-counts/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        
+        // Find the user
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        // Count followers
+        const followersCount = await User.countDocuments({ following: userId });
+        
+        // Count following
+        const followingCount = user.following.length;
+        
+        res.json({
+            followers: followersCount,
+            following: followingCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 
 module.exports = router;
