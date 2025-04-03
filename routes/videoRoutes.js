@@ -84,7 +84,7 @@ router.get('/all', async (req, res) => {
 // Get all videos with optional filtering by category, type, creator, or brand
 router.get('/list', async (req, res) => {
     try {
-        const { category, type, creatorId, brandId } = req.query;
+        const { category, type, creatorId, brandId } = req.body;
         const filter = {};
         if (category) filter.category = category;
         if (type) filter.type = type;
