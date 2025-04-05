@@ -91,7 +91,7 @@ router.get('/list', async (req, res) => {
         if (creatorId) filter.creatorId = creatorId;
         if (brandId) filter.brandId = brandId;
         
-        const videos = await Video.find(filter).populate('creatorId', 'name').populate('brandId', 'companyName');
+        const videos = await Video.find(filter).sort({ createdAt: -1 }).populate('creatorId', 'name').populate('brandId', 'companyName');
         res.json(videos);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
