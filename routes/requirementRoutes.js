@@ -19,9 +19,17 @@ router.post('/post', async (req, res) => {
 // Get all requirements with optional filtering by category
 router.get('/list', async (req, res) => {
     try {
-        const { category } = req.query;
-        const filter = category ? { category } : {};
-        const requirements = await Requirement.find(filter).populate('brandId', 'companyName website');
+        const { category, title } = req.query;
+    
+        const filter = {};
+        if (title) {
+            filter.title = { $regex: title, $options: 'i' };
+        }
+
+        if (category) {
+            filter.category = { $regex: category, $options: 'i' };
+        }
+        const requirements = await Requirement.find(filter).sort({ createdAt: -1 }).populate('brandId', 'companyName website');
         res.json(requirements);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
