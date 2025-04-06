@@ -244,6 +244,30 @@ router.get('/user/:userId', async (req, res) => {
 
         // Fetch videos where the user is either a creator or a brand
         const videos = await Video.find({
+            type: 'video',
+            $or: [{ creatorId: userId }, { brandId: userId }]
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({ videos });
+
+    } catch (error) {
+        console.error("Error fetching videos:", error);
+        res.status(500).json({ message: "Server error", error });
+    }
+});
+
+// get shorts for brand and user profile
+router.post('/user-sorts/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        // Fetch videos where the user is either a creator or a brand
+        const videos = await Video.find({
+            type: 'short',
             $or: [{ creatorId: userId }, { brandId: userId }]
         }).sort({ createdAt: -1 });
 

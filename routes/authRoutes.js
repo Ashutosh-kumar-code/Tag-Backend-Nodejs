@@ -1,9 +1,14 @@
 const express = require('express');
+const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Video = require('../models/Video');
 const router = express.Router();
+
+
+const storage = multer.memoryStorage(); // store file in memory
+const upload = multer({ storage });
 
 // Signup Route
 router.post('/signup', async (req, res) => {
@@ -43,16 +48,67 @@ router.post('/login', async (req, res) => {
 
 
 // Update User Info
-router.put('/update', async (req, res) => {
+router.put('/update', upload.single('image'), async (req, res) => {
     try {
         const { userId, name, companyName, website, bio, topic } = req.body;
-        const updatedUser = await User.findByIdAndUpdate(userId, { name, companyName, website, bio, topic }, { new: true });
-        if (!updatedUser) return res.status(404).json({ message: 'User not found' });
-        res.json({ message: 'User info updated successfully', user: updatedUser });
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        let updateData = { name, companyName, website, bio, topic };
+
+        // If image is provided
+        if (req.file) {
+            const result = await cloudinary.uploader.upload_stream(
+                { folder: 'user_profiles' },
+                (error, result) => {
+                    if (error) {
+                        console.error("Cloudinary Upload Error:", error);
+                        return res.status(500).json({ message: "Image upload failed", error });
+                    }
+
+                    updateData.image = result.secure_url;
+
+                    // Perform update after image upload
+                    User.findByIdAndUpdate(userId, updateData, { new: true })
+                        .then(updatedUser => {
+                            if (!updatedUser) {
+                                return res.status(404).json({ message: 'User not found' });
+                            }
+                            return res.json({ message: 'User info updated successfully', user: updatedUser });
+                        })
+                        .catch(err => {
+                            console.error("MongoDB Update Error:", err);
+                            return res.status(500).json({ message: 'Failed to update user' });
+                        });
+                }
+            );
+
+            // Pipe file buffer to cloudinary upload stream
+            require('streamifier').createReadStream(req.file.buffer).pipe(result);
+        } else {
+            // No image, just update other fields
+            const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+            if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+            res.json({ message: 'User info updated successfully', user: updatedUser });
+        }
+
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error("Error in update:", error);
+        res.status(500).json({ message: 'Server error', error });
     }
 });
+// router.put('/update', async (req, res) => {
+//     try {
+//         const { userId, name, companyName, website, bio, topic } = req.body;
+//         const updatedUser = await User.findByIdAndUpdate(userId, { name, companyName, website, bio, topic }, { new: true });
+//         if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+//         res.json({ message: 'User info updated successfully', user: updatedUser });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 // Get Profile Info
 router.get('/profile/:userId', async (req, res) => {
