@@ -9,6 +9,7 @@ const VideoSchema = new mongoose.Schema({
     thumbnailUrl: { type: String, },
     category: { type: String, required: true },
     type: { type: String, enum: ['video', 'short'], required: true },
+    views: { type: Number, default: 0 }, // 👈 Added views field
 }, { timestamps: true });
 
 module.exports = mongoose.model('Video', VideoSchema);

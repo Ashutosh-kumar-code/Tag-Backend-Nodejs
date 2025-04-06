@@ -255,5 +255,22 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
+// Increase views ( Call this route when the user starts watching the video )
+router.post('/onevideo/:id/view', async (req, res) => {
+    try {
+        const video = await Video.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { views: 1 } }, // 👈 Increment the views
+            { new: true }
+        );
+
+        if (!video) return res.status(404).json({ message: 'Video not found' });
+
+        res.json({ message: 'View added', views: video.views });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
+    }
+});
+
 
 module.exports = router;
