@@ -39,6 +39,23 @@ router.post('/unfollow/:creatorId', async (req, res) => {
     }
 });
 
+router.get('/is-following/:creatorId/:userId', async (req, res) => {
+    try {
+        const { creatorId, userId } = req.params;
+
+        const user = await User.findById(userId);
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const isFollowing = user.following.includes(creatorId);
+
+        res.json({ isFollowing });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 // Get total followed creators with some info
 router.get('/following/:userId', async (req, res) => {
     try {
