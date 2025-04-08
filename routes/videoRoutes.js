@@ -41,7 +41,9 @@ router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
 
         // Save video data to MongoDB
         let newVideo;
-        if (creatorId) {
+        if (creatorId && brandId) {
+            newVideo = new Video({ creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type });
+        } else if (creatorId) {
             newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
         } else if (brandId) {
             newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
