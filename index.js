@@ -14,6 +14,8 @@ const requirementRoutes = require('./routes/requirementRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const followRoutes = require('./routes/followRoutes');
 const videoRoutes = require('./routes/videoRoutes');
+const LikesRoute = require("./routes/likesRoute"); // adjust path as needed
+
 const User = require("./models/User"); // adjust path as needed
 
 const app = express();
@@ -61,6 +63,7 @@ app.use('/api/requirements', requirementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/friend', followRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/social', LikesRoute);
 
 // Upload API for image/audio
 app.post("/upload", upload.single("file"), async (req, res) => {

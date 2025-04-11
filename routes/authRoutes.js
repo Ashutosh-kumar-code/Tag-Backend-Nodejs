@@ -4,29 +4,113 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Video = require('../models/Video');
+const VerificationToken = require('../models/VerificationToken');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+
 const router = express.Router();
 
 
 const storage = multer.memoryStorage(); // store file in memory
 const upload = multer({ storage });
 
+
+
+// Example transporter setup (Use real credentials in production)
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: 'ashutosh.wevdev@gmail.com',
+    pass: 'buxe fsep bscv vwdb'
+  }
+});
+// const transporter = nodemailer.createTransport({
+//     host: 'smtp.gmail.com',
+//     port: 587, // ⚠️ Try port 587 instead of 465
+//     secure: false, // false = TLS, not SSL
+//     auth: {
+//       user: "ashutosh.wevdev@gmail.com",
+//       pass: "buxe fsep bscv vwdb"
+//     }
+//   });
+  
+
+
 // Signup Route
 router.post('/signup', async (req, res) => {
     try {
-        const { name, email, password, role, companyName, website, bio, topic } = req.body;
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: 'User already exists' });
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ name, email, password: hashedPassword, role, companyName, website, bio, topic });
-        await newUser.save();
-
-        const message = role === 'brand' ? 'Brand registered successfully' : 'Creator registered successfully';
-        res.status(201).json({ message });
+      const { name, email, password, role, companyName, website, bio, topic } = req.body;
+  
+      const existingUser = await User.findOne({ email });
+      if (existingUser) return res.status(400).json({ message: 'User already exists' });
+  
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = new User({
+        name, email, password: hashedPassword, role,
+        companyName, website, bio, topic, isVerified: false
+      });
+      await newUser.save();
+  
+      // Create verification token
+      const token = crypto.randomBytes(32).toString('hex');
+      const verificationToken = new VerificationToken({
+        userId: newUser._id,
+        token
+      });
+      await verificationToken.save();
+  
+      const verificationUrl = `http://localhost:3000/verify-email/${token}`;
+  
+      // Send email
+      await transporter.sendMail({
+        from: '"SignUp Team" <your_email@gmail.com>',
+        to: email,
+        subject: 'Verify your email',
+        html: `<h2>Hello ${name}</h2>
+               <p>Please click the link below to verify your email:</p>
+               <a href="${verificationUrl}">Verify Email</a>`
+      });
+  
+      res.status(201).json({ message: 'Signup successful. Please check your email to verify your account.' });
+  
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
     }
-});
+  });
+  
+
+  router.get('/verify-email/:token', async (req, res) => {
+    try {
+      const tokenDoc = await VerificationToken.findOne({ token: req.params.token });
+      if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
+  
+      await User.findByIdAndUpdate(tokenDoc.userId, { isVerified: true });
+      await VerificationToken.deleteOne({ _id: tokenDoc._id });
+  
+      res.status(200).json({ message: 'Email verified successfully!' });
+    } catch (error) {
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+
+// router.post('/signup', async (req, res) => {
+//     try {
+//         const { name, email, password, role, companyName, website, bio, topic } = req.body;
+//         const existingUser = await User.findOne({ email });
+//         if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+//         const hashedPassword = await bcrypt.hash(password, 10);
+//         const newUser = new User({ name, email, password: hashedPassword, role, companyName, website, bio, topic });
+//         await newUser.save();
+
+//         const message = role === 'brand' ? 'Brand registered successfully' : 'Creator registered successfully';
+//         res.status(201).json({ message });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 // Login Route
 router.post('/login', async (req, res) => {

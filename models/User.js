@@ -8,7 +8,8 @@ const UserSchema = new mongoose.Schema({
     companyName: { type: String, required: function() { return this.role === 'brand'; } },
     website: { type: String, required: function() { return this.role === 'brand'; } },
     bio: { type: String,  },
-    topic: { type: String, required: true },
+    topic: { type: String },
+    isVerified: { type: Boolean, default: false },
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
