@@ -7,6 +7,7 @@ const { Server } = require("socket.io");
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("./config/cloudinary"); // Uses your existing config
+const bodyParser = require('body-parser'); // If not added already
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -21,6 +22,10 @@ const User = require("./models/User"); // adjust path as needed
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
+
+
+
+app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(cors());
 app.use(cors({ origin: "*" }));

@@ -558,28 +558,137 @@ router.post('/forgot-password', async (req, res) => {
     }
   });
 
-
-  // POST /reset-password/:token
-router.post('/reset-password/:token', async (req, res) => {
+//   This Route to Your Backend (HTML Page for Password Reset)
+  router.get('/reset-password/:token', async (req, res) => {
     try {
-      const tokenDoc = await PasswordResetToken.findOne({ token: req.params.token });
-      if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
+      const { token } = req.params;
+      const tokenDoc = await PasswordResetToken.findOne({ token });
   
-      const user = await User.findById(tokenDoc.userId);
-      if (!user) return res.status(400).json({ message: 'User not found' });
+      if (!tokenDoc) {
+        return res.send(`
+          <div style="text-align:center;padding:50px;font-family:sans-serif;">
+            <h2 style="color:#b00020;">Invalid or expired token</h2>
+            <p>This password reset link is no longer valid.</p>
+          </div>
+        `);
+      }
   
-      const { newPassword } = req.body;
-      user.password = await bcrypt.hash(newPassword, 10);
-      await user.save();
-      await tokenDoc.deleteOne();
-  
-      res.status(200).json({ message: 'Password has been reset successfully' });
-  
+      // Render HTML form
+      res.send(`
+        <html>
+          <head>
+            <title>Reset Password</title>
+            <style>
+              body {
+                background-color: #f3e8ff;
+                font-family: 'Segoe UI', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+              }
+              .card {
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+                width: 100%;
+                max-width: 400px;
+                text-align: center;
+              }
+              input[type="password"] {
+                padding: 10px;
+                width: 100%;
+                margin: 10px 0;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                font-size: 16px;
+              }
+              button {
+                background-color: #6a0dad;
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                font-size: 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-top: 10px;
+              }
+              button:hover {
+                background-color: #5a049d;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>Reset Your Password</h2>
+              <form method="POST" action="/reset-password/${token}">
+                <input type="password" name="newPassword" placeholder="Enter new password" required />
+                <button type="submit">Reset Password</button>
+              </form>
+            </div>
+          </body>
+        </html>
+      `);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Server error' });
+      res.status(500).send('Something went wrong.');
     }
   });
+  
+
+  // POST /reset-password/:token
+
+
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    const tokenDoc = await PasswordResetToken.findOne({ token });
+    if (!tokenDoc) {
+      return res.send(`<h2 style="color:red; text-align:center;">Invalid or expired token</h2>`);
+    }
+
+    const user = await User.findById(tokenDoc.userId);
+    if (!user) return res.send(`<h2 style="color:red; text-align:center;">User not found</h2>`);
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    await tokenDoc.deleteOne();
+
+    res.send(`
+      <div style="text-align:center;padding:50px;font-family:sans-serif;">
+        <h2 style="color:#4caf50;">Password reset successful!</h2>
+        <p>You can now login with your new password.</p>
+      </div>
+    `);
+  } catch (error) {
+    res.status(500).send(`<h2 style="color:red;text-align:center;">Server Error</h2>`);
+  }
+});
+
+
+// router.post('/reset-password/:token', async (req, res) => {
+//     try {
+//       const tokenDoc = await PasswordResetToken.findOne({ token: req.params.token });
+//       if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
+  
+//       const user = await User.findById(tokenDoc.userId);
+//       if (!user) return res.status(400).json({ message: 'User not found' });
+  
+//       const { newPassword } = req.body;
+//       user.password = await bcrypt.hash(newPassword, 10);
+//       await user.save();
+//       await tokenDoc.deleteOne();
+  
+//       res.status(200).json({ message: 'Password has been reset successfully' });
+  
+//     } catch (err) {
+//       console.error(err);
+//       res.status(500).json({ message: 'Server error' });
+//     }
+//   });
 
   
 
