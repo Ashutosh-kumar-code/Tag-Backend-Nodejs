@@ -59,7 +59,7 @@ router.post('/signup', async (req, res) => {
         });
         await verificationToken.save();
 
-        const verificationUrl = `http://localhost:3000/verify-email/${token}`;
+        const verificationUrl = `https://tag-backend.vercel.app/verify-email/${token}`;
 
         // Send email
         await transporter.sendMail({
@@ -218,6 +218,7 @@ router.put('/update', upload.single('image'), async (req, res) => {
         res.status(500).json({ message: 'Server error', error });
     }
 });
+
 // router.put('/update', async (req, res) => {
 //     try {
 //         const { userId, name, companyName, website, bio, topic } = req.body;
