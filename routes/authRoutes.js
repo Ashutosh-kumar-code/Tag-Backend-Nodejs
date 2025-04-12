@@ -94,41 +94,42 @@ router.get('/verify-email/:token', async (req, res) => {
     }
 });
 
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
+// router.post('/login', async (req, res) => {
+//     try {
+//         const { email, password } = req.body;
 
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+//         const user = await User.findOne({ email });
+//         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-        // ✅ Add this check
-        if (!user.isVerified) {
-            return res.status(401).json({ message: 'Please verify your email before logging in.' });
-        }
+//         // ✅ Add this check
+//         if (!user.isVerified) {
+//             return res.status(401).json({ message: 'Please verify your email before logging in.' });
+//         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+//         const isMatch = await bcrypt.compare(password, user.password);
+//         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+//         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                companyName: user.companyName,
-                website: user.website,
-                bio: user.bio,
-                topic: user.topic
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+//         res.json({
+//             token,
+//             user: {
+//                 id: user._id,
+//                 name: user.name,
+//                 email: user.email,
+//                 role: user.role,
+//                 companyName: user.companyName,
+//                 website: user.website,
+//                 bio: user.bio,
+//                 topic: user.topic
+//             }
+//         });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
+// ==============================================================
 
 // router.post('/signup', async (req, res) => {
 //     try {
@@ -148,21 +149,21 @@ router.post('/login', async (req, res) => {
 // });
 
 // Login Route
-// router.post('/login', async (req, res) => {
-//     try {
-//         const { email, password } = req.body;
-//         const user = await User.findOne({ email });
-//         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-//         const isMatch = await bcrypt.compare(password, user.password);
-//         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-//         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-//         res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, companyName: user.companyName, website: user.website, bio: user.bio, topic: user.topic } });
-//     } catch (error) {
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, companyName: user.companyName, website: user.website, bio: user.bio, topic: user.topic } });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 
 
