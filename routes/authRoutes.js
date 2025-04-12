@@ -18,11 +18,11 @@ const upload = multer({ storage });
 
 // Example transporter setup (Use real credentials in production)
 const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: 'ashutosh.wevdev@gmail.com',
-    pass: 'buxe fsep bscv vwdb'
-  }
+    service: 'Gmail',
+    auth: {
+        user: 'ashutosh.wevdev@gmail.com',
+        pass: 'buxe fsep bscv vwdb'
+    }
 });
 // const transporter = nodemailer.createTransport({
 //     host: 'smtp.gmail.com',
@@ -33,67 +33,102 @@ const transporter = nodemailer.createTransport({
 //       pass: "buxe fsep bscv vwdb"
 //     }
 //   });
-  
+
 
 
 // Signup Route
 router.post('/signup', async (req, res) => {
     try {
-      const { name, email, password, role, companyName, website, bio, topic } = req.body;
-  
-      const existingUser = await User.findOne({ email });
-      if (existingUser) return res.status(400).json({ message: 'User already exists' });
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = new User({
-        name, email, password: hashedPassword, role,
-        companyName, website, bio, topic, isVerified: false
-      });
-      await newUser.save();
-  
-      // Create verification token
-      const token = crypto.randomBytes(32).toString('hex');
-      const verificationToken = new VerificationToken({
-        userId: newUser._id,
-        token
-      });
-      await verificationToken.save();
-  
-      const verificationUrl = `http://localhost:3000/verify-email/${token}`;
-  
-      // Send email
-      await transporter.sendMail({
-        from: '"SignUp Team" <your_email@gmail.com>',
-        to: email,
-        subject: 'Verify your email',
-        html: `<h2>Hello ${name}</h2>
+        const { name, email, password, role, companyName, website, bio, topic } = req.body;
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({
+            name, email, password: hashedPassword, role,
+            companyName, website, bio, topic, isVerified: false
+        });
+        await newUser.save();
+
+        // Create verification token
+        const token = crypto.randomBytes(32).toString('hex');
+        const verificationToken = new VerificationToken({
+            userId: newUser._id,
+            token
+        });
+        await verificationToken.save();
+
+        const verificationUrl = `http://localhost:3000/verify-email/${token}`;
+
+        // Send email
+        await transporter.sendMail({
+            from: '"SignUp Team" <your_email@gmail.com>',
+            to: email,
+            subject: 'Verify your email',
+            html: `<h2>Hello ${name}</h2>
                <p>Please click the link below to verify your email:</p>
                <a href="${verificationUrl}">Verify Email</a>`
-      });
-  
-      res.status(201).json({ message: 'Signup successful. Please check your email to verify your account.' });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-  
+        });
 
-  router.get('/verify-email/:token', async (req, res) => {
-    try {
-      const tokenDoc = await VerificationToken.findOne({ token: req.params.token });
-      if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
-  
-      await User.findByIdAndUpdate(tokenDoc.userId, { isVerified: true });
-      await VerificationToken.deleteOne({ _id: tokenDoc._id });
-  
-      res.status(200).json({ message: 'Email verified successfully!' });
+        res.status(201).json({ message: 'Signup successful. Please check your email to verify your account.' });
+
     } catch (error) {
-      res.status(500).json({ message: 'Server error' });
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
-  });
-  
+});
+
+
+router.get('/verify-email/:token', async (req, res) => {
+    try {
+        const tokenDoc = await VerificationToken.findOne({ token: req.params.token });
+        if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
+
+        await User.findByIdAndUpdate(tokenDoc.userId, { isVerified: true });
+        await VerificationToken.deleteOne({ _id: tokenDoc._id });
+
+        res.status(200).json({ message: 'Email verified successfully!' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+        // ✅ Add this check
+        if (!user.isVerified) {
+            return res.status(401).json({ message: 'Please verify your email before logging in.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                companyName: user.companyName,
+                website: user.website,
+                bio: user.bio,
+                topic: user.topic
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 
 // router.post('/signup', async (req, res) => {
 //     try {
@@ -113,21 +148,21 @@ router.post('/signup', async (req, res) => {
 // });
 
 // Login Route
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+// router.post('/login', async (req, res) => {
+//     try {
+//         const { email, password } = req.body;
+//         const user = await User.findOne({ email });
+//         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+//         const isMatch = await bcrypt.compare(password, user.password);
+//         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, companyName: user.companyName, website: user.website, bio: user.bio, topic: user.topic } });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+//         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+//         res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, companyName: user.companyName, website: user.website, bio: user.bio, topic: user.topic } });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 
 
@@ -234,15 +269,15 @@ router.get('/all-registrations-graph', async (req, res) => {
             },
             {
                 $group: {
-                    _id: { 
-                        month: { $month: "$createdAt" }, 
-                        year: { $year: "$createdAt" } 
+                    _id: {
+                        month: { $month: "$createdAt" },
+                        year: { $year: "$createdAt" }
                     },
-                    totalBrands: { 
-                        $sum: { $cond: [{ $eq: ["$role", "brand"] }, 1, 0] } 
+                    totalBrands: {
+                        $sum: { $cond: [{ $eq: ["$role", "brand"] }, 1, 0] }
                     },
-                    totalCreators: { 
-                        $sum: { $cond: [{ $eq: ["$role", "creator"] }, 1, 0] } 
+                    totalCreators: {
+                        $sum: { $cond: [{ $eq: ["$role", "creator"] }, 1, 0] }
                     }
                 }
             },
@@ -319,34 +354,46 @@ router.get('/total-stats', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
     try {
         const creators = await User.find({ role: 'creator' })
-            .select('name email following')
+            .select('name email image')
             .lean();
 
         const leaderboard = await Promise.all(
             creators.map(async (creator) => {
-                const videoCount = await Video.countDocuments({ creatorId: creator._id });
-                const followerCount = creator.following.length;
+                const videos = await Video.find({ creatorId: creator._id }).lean();
 
-                const totalScore = videoCount + followerCount;
+                let totalLikes = 0;
+                let totalComments = 0;
+                let totalViews = 0;
 
-                return totalScore > 1
-                    ? {
-                          creatorId: creator._id,
-                          name: creator.name,
-                          email: creator.email,
-                          videoCount,
-                          followerCount,
-                          totalScore,
-                      }
-                    : null;
+                videos.forEach((video) => {
+                    totalLikes += video.likes.length;
+                    totalComments += video.comments.length;
+                    totalViews += video.views || 0;
+                });
+
+                // Calculate total points
+                const totalPoints = totalViews * 1 + totalLikes * 2 + totalComments * 3;
+
+                // Exclude if totalPoints < 10
+                if (totalPoints < 10) return null;
+
+                return {
+                    creatorId: creator._id,
+                    name: creator.name,
+                    email: creator.email,
+                    image: creator.image,
+                    totalLikes,
+                    totalComments,
+                    totalViews,
+                    totalPoints
+                };
             })
         );
 
-        // Filter out null values and sort by totalScore (descending order)
         const filteredLeaderboard = leaderboard
             .filter((entry) => entry !== null)
-            .sort((a, b) => b.totalScore - a.totalScore)
-            .slice(0, 50); // Limit to top 50
+            .sort((a, b) => b.totalPoints - a.totalPoints)
+            .slice(0, 50); // Top 50 only
 
         res.json({ success: true, leaderboard: filteredLeaderboard });
     } catch (error) {
