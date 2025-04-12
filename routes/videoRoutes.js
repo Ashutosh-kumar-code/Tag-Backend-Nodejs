@@ -6,71 +6,167 @@ const path = require('path');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
 const mongoose = require('mongoose');
+// const { v2: cloudinary } = require('cloudinary');
+const streamifier = require('streamifier');
 
 const router = express.Router();
 
-const storage = new CloudinaryStorage({
+
+const videoStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'videos', // Folder in Cloudinary
-        resource_type: 'video', // Ensure videos are properly uploaded
-        format: async (req, file) => 'mp4', // Set default format
-        public_id: (req, file) => Date.now(), // Unique filename
-    },
-});
-
-const upload = multer({ storage });
-
-// 🔹 Upload Video API (Fix for Vercel)
-router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
-    try {
-        const { creatorId, brandId, title, description, category, type, thumbnailUrl } = req.body;
-
-        if (!req.file) {
-            return res.status(400).json({ message: "No video file uploaded" });
-        }
-
-        console.log("Uploaded File:", req.file); // Debugging
-
-        // Cloudinary returns `req.file.path.secure_url`
-        const videoUrl = req.file.path || req.file.secure_url;
-
-        if (!videoUrl) {
-            return res.status(500).json({ message: "Error retrieving Cloudinary URL" });
-        }
-
-        // Save video data to MongoDB
-        let newVideo;
-        if (creatorId && brandId) {
-            newVideo = new Video({ creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type });
-        } else if (creatorId) {
-            newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
-        } else if (brandId) {
-            newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
-        }
-
-        await newVideo.save();
-
-        res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
-
-    } catch (error) {
-        console.error("Error uploading video:", error);
-        res.status(500).json({ message: 'Server error', error });
+      folder: 'videos',
+      resource_type: 'video',
+      format: async () => 'mp4',
+      public_id: () => `video_${Date.now()}`
     }
+  });
+  
+  const imageStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'thumbnails',
+      resource_type: 'image',
+      format: async () => 'jpg',
+      public_id: () => `thumbnail_${Date.now()}`
+    }
+  });
+  
+//   const uploadVideo = multer({ storage: videoStorage });
+//   const uploadImage = multer({ storage: imageStorage });
+  
+  // Combine both
+//   const uploadBoth = multer();
+
+  const videoUpload = multer({
+    storage: multer.diskStorage({}),
+  }).fields([
+    { name: 'videoFile', maxCount: 1 },
+    { name: 'thumbnailImage', maxCount: 1 }
+  ]);
+
+
+
+router.post('/post/creator', videoUpload, async (req, res) => {
+  try {
+    const { creatorId, brandId, title, description, category, type } = req.body;
+
+    const videoFile = req.files?.videoFile?.[0];
+    const thumbnailFile = req.files?.thumbnailImage?.[0];
+
+    if (!videoFile) {
+      return res.status(400).json({ message: "No video file uploaded" });
+    }
+
+    // Upload video
+    const videoUploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'videos',
+          resource_type: 'video',
+          public_id: `video_${Date.now()}`
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      streamifier.createReadStream(videoFile.buffer).pipe(uploadStream);
+    });
+
+    let thumbnailUrl = '';
+    if (thumbnailFile) {
+      const thumbnailUploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'thumbnails',
+            resource_type: 'image',
+            public_id: `thumbnail_${Date.now()}`
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        streamifier.createReadStream(thumbnailFile.buffer).pipe(uploadStream);
+      });
+      thumbnailUrl = thumbnailUploadResult.secure_url;
+    }
+
+    // Save to DB
+    const newVideo = new Video({
+      creatorId,
+      brandId,
+      title,
+      description,
+      videoUrl: videoUploadResult.secure_url,
+      thumbnailUrl,
+      category,
+      type
+    });
+
+    await newVideo.save();
+
+    res.status(201).json({ message: 'Video uploaded with thumbnail!', video: newVideo });
+
+  } catch (err) {
+    console.error("Upload Error:", err);
+    res.status(500).json({ message: 'Server error', error: err });
+  }
 });
 
 
-// Post a video by Creator from Brand's profile
-// router.post('/post/creator-from-brand', async (req, res) => {
+// const storage = new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//         folder: 'videos', // Folder in Cloudinary
+//         resource_type: 'video', // Ensure videos are properly uploaded
+//         format: async (req, file) => 'mp4', // Set default format
+//         public_id: (req, file) => Date.now(), // Unique filename
+//     },
+// });
+
+// const upload = multer({ storage });
+
+// // 🔹 Upload Video API (Fix for Vercel)
+// router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
 //     try {
-//         const { creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type } = req.body;
-//         const newVideo = new Video({ creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type });
+//         const { creatorId, brandId, title, description, category, type, thumbnailUrl } = req.body;
+
+//         if (!req.file) {
+//             return res.status(400).json({ message: "No video file uploaded" });
+//         }
+
+//         console.log("Uploaded File:", req.file); // Debugging
+
+//         // Cloudinary returns `req.file.path.secure_url`
+//         const videoUrl = req.file.path || req.file.secure_url;
+
+//         if (!videoUrl) {
+//             return res.status(500).json({ message: "Error retrieving Cloudinary URL" });
+//         }
+
+//         // Save video data to MongoDB
+//         let newVideo;
+//         if (creatorId && brandId) {
+//             newVideo = new Video({ creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type });
+//         } else if (creatorId) {
+//             newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
+//         } else if (brandId) {
+//             newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
+//         }
+
 //         await newVideo.save();
-//         res.status(201).json({ message: 'Video posted by creator from brand profile successfully', video: newVideo });
+
+//         res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
+
 //     } catch (error) {
-//         res.status(500).json({ message: 'Server error' });
+//         console.error("Error uploading video:", error);
+//         res.status(500).json({ message: 'Server error', error });
 //     }
 // });
+
+
 
 // SHOW ALL VIDEOS LIST
 router.get('/all', async (req, res) => {

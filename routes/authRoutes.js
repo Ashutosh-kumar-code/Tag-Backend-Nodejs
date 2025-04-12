@@ -15,8 +15,6 @@ const router = express.Router();
 const storage = multer.memoryStorage(); // store file in memory
 const upload = multer({ storage });
 
-
-
 // Example transporter setup (Use real credentials in production)
 const transporter = nodemailer.createTransport({
     service: 'Gmail',
@@ -669,26 +667,6 @@ router.post('/reset-password/:token', async (req, res) => {
 });
 
 
-// router.post('/reset-password/:token', async (req, res) => {
-//     try {
-//       const tokenDoc = await PasswordResetToken.findOne({ token: req.params.token });
-//       if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
-  
-//       const user = await User.findById(tokenDoc.userId);
-//       if (!user) return res.status(400).json({ message: 'User not found' });
-  
-//       const { newPassword } = req.body;
-//       user.password = await bcrypt.hash(newPassword, 10);
-//       await user.save();
-//       await tokenDoc.deleteOne();
-  
-//       res.status(200).json({ message: 'Password has been reset successfully' });
-  
-//     } catch (err) {
-//       console.error(err);
-//       res.status(500).json({ message: 'Server error' });
-//     }
-//   });
 
   
 
