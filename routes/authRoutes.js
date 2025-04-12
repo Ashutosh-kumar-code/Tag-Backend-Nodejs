@@ -24,16 +24,6 @@ const transporter = nodemailer.createTransport({
         pass: 'buxe fsep bscv vwdb'
     }
 });
-// const transporter = nodemailer.createTransport({
-//     host: 'smtp.gmail.com',
-//     port: 587, // ⚠️ Try port 587 instead of 465
-//     secure: false, // false = TLS, not SSL
-//     auth: {
-//       user: "ashutosh.wevdev@gmail.com",
-//       pass: "buxe fsep bscv vwdb"
-//     }
-//   });
-
 
 
 // Signup Route
@@ -63,13 +53,35 @@ router.post('/signup', async (req, res) => {
 
         // Send email
         await transporter.sendMail({
-            from: '"SignUp Team" <your_email@gmail.com>',
+            from: '"Tag Team" <your_email@gmail.com>',
             to: email,
-            subject: 'Verify your email',
-            html: `<h2>Hello ${name}</h2>
-               <p>Please click the link below to verify your email:</p>
-               <a href="${verificationUrl}">Verify Email</a>`
-        });
+            subject: 'Verify your email - New Link',
+            html: `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 40px;">
+              <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+                <div style="background: #6a0dad; color: white; padding: 20px 30px;">
+                  <h1 style="margin: 0; font-size: 24px;">Tag App - Email Verification</h1>
+                </div>
+                <div style="padding: 30px;">
+                  <h2 style="color: #333;">Hello ${user.name},</h2>
+                  <p style="font-size: 16px; color: #555;">Thank you for signing up with <strong>Tag App</strong>.</p>
+                  <p style="font-size: 16px; color: #555;">To complete your registration, please verify your email by clicking the button below:</p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${verificationUrl}" style="background-color: #6a0dad; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; display: inline-block;">
+                      Verify Email
+                    </a>
+                  </div>
+                  <p style="font-size: 14px; color: #888;">If you did not request this, please ignore this email.</p>
+                  <p style="font-size: 14px; color: #888;">— Tag App Team</p>
+                </div>
+              </div>
+              <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #aaa;">
+                <p>&copy; ${new Date().getFullYear()} Tag App. All rights reserved.</p>
+              </div>
+            </div>
+            `
+          });
+          
 
         res.status(201).json({ message: 'Signup successful. Please check your email to verify your account.' });
 
@@ -82,17 +94,56 @@ router.post('/signup', async (req, res) => {
 
 router.get('/verify-email/:token', async (req, res) => {
     try {
-        const tokenDoc = await VerificationToken.findOne({ token: req.params.token });
-        if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
-
-        await User.findByIdAndUpdate(tokenDoc.userId, { isVerified: true });
-        await VerificationToken.deleteOne({ _id: tokenDoc._id });
-
-        res.status(200).json({ message: 'Email verified successfully!' });
+      const tokenDoc = await VerificationToken.findOne({ token: req.params.token });
+      if (!tokenDoc) {
+        return res.status(400).send(`
+          <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 50px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+              <div style="background-color: #ff4d4d; color: white; padding: 20px; text-align: center;">
+                <h2>Verification Failed</h2>
+              </div>
+              <div style="padding: 30px; text-align: center;">
+                <p style="font-size: 16px; color: #555;">The verification link is invalid or has expired.</p>
+                <a href="https://yourfrontend.com/resend-verification" style="margin-top: 20px; display: inline-block; background-color: #6a0dad; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Resend Verification</a>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+  
+      await User.findByIdAndUpdate(tokenDoc.userId, { isVerified: true });
+      await VerificationToken.deleteOne({ _id: tokenDoc._id });
+  
+      return res.status(200).send(`
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 50px;">
+          <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+            <div style="background-color: #6a0dad; color: white; padding: 20px; text-align: center;">
+              <h2>Email Verified Successfully 🎉</h2>
+            </div>
+            <div style="padding: 30px; text-align: center;">
+              <p style="font-size: 16px; color: #555;">Your email has been verified successfully. You can now log in to your account.</p>
+              <a href="https://yourfrontend.com/login" style="margin-top: 20px; display: inline-block; background-color: #6a0dad; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Go to Login</a>
+            </div>
+          </div>
+        </div>
+      `);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+      console.error(error);
+      res.status(500).send(`
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 50px;">
+          <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+            <div style="background-color: #ff4d4d; color: white; padding: 20px; text-align: center;">
+              <h2>Server Error</h2>
+            </div>
+            <div style="padding: 30px; text-align: center;">
+              <p style="font-size: 16px; color: #555;">Something went wrong on our end. Please try again later.</p>
+            </div>
+          </div>
+        </div>
+      `);
     }
-});
+  });
+  
 
 router.post('/resend-verification', async (req, res) => {
     try {
@@ -123,10 +174,32 @@ router.post('/resend-verification', async (req, res) => {
         from: '"Tag Team" <your_email@gmail.com>',
         to: email,
         subject: 'Verify your email - New Link',
-        html: `<h2>Hello ${user.name}</h2>
-              <p>Here's your new verification link:</p>
-              <a href="${verificationUrl}">Verify Email</a>`
+        html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 40px;">
+          <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+            <div style="background: #6a0dad; color: white; padding: 20px 30px;">
+              <h1 style="margin: 0; font-size: 24px;">Tag App - Email Verification</h1>
+            </div>
+            <div style="padding: 30px;">
+              <h2 style="color: #333;">Hello ${user.name},</h2>
+              <p style="font-size: 16px; color: #555;">Thank you for signing up with <strong>Tag App</strong>.</p>
+              <p style="font-size: 16px; color: #555;">To complete your registration, please verify your email by clicking the button below:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${verificationUrl}" style="background-color: #6a0dad; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; display: inline-block;">
+                  Verify Email
+                </a>
+              </div>
+              <p style="font-size: 14px; color: #888;">If you did not request this, please ignore this email.</p>
+              <p style="font-size: 14px; color: #888;">— Tag App Team</p>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #aaa;">
+            <p>&copy; ${new Date().getFullYear()} Tag App. All rights reserved.</p>
+          </div>
+        </div>
+        `
       });
+      
   
       res.status(200).json({ message: 'Verification email sent again. Please check your inbox.' });
   
