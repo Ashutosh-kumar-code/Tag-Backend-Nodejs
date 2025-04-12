@@ -623,7 +623,7 @@ router.post('/forgot-password', async (req, res) => {
           <body>
             <div class="card">
               <h2>Reset Your Password</h2>
-              <form method="POST" action="/reset-password/${token}">
+              <form method="POST" action="/api/auth/reset-password/${token}">
                 <input type="password" name="newPassword" placeholder="Enter new password" required />
                 <button type="submit">Reset Password</button>
               </form>
