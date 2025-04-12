@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Video = require('../models/Video');
 const VerificationToken = require('../models/VerificationToken');
+const PasswordResetToken = require('../models/PasswordResetToken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
@@ -63,7 +64,7 @@ router.post('/signup', async (req, res) => {
                   <h1 style="margin: 0; font-size: 20px;">Tag App - Email Verification</h1>
                 </div>
                 <div style="padding: 30px;">
-                  <h2 style="color: #333;">Hello ${user.name},</h2>
+                  <h2 style="color: #333;">Hello ${name},</h2>
                   <p style="font-size: 16px; color: #555;">Thank you for signing up with <strong>Tag App</strong>.</p>
                   <p style="font-size: 16px; color: #555;">To complete your registration, please verify your email by clicking the button below:</p>
                   <div style="text-align: center; margin: 30px 0;">
@@ -516,5 +517,70 @@ router.get('/leaderboard', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
+
+// POST /forgot-password
+router.post('/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email });
+      if (!user) return res.status(400).json({ message: 'User not found' });
+  
+      const existingToken = await PasswordResetToken.findOne({ userId: user._id });
+      if (existingToken) await existingToken.deleteOne();
+  
+      const token = crypto.randomBytes(32).toString('hex');
+      const resetToken = new PasswordResetToken({ userId: user._id, token });
+      await resetToken.save();
+  
+      const resetUrl = `https://tag-frontend.vercel.app/api/auth/reset-password/${token}`;
+  
+      await transporter.sendMail({
+        from: '"Tag Support" <your_email@gmail.com>',
+        to: email,
+        subject: 'Password Reset Request',
+        html: `
+          <div style="font-family: Arial; max-width:600px; margin:auto; padding:20px; border:1px solid #eee; border-radius:10px; background-color:#f8f4ff;">
+            <h2 style="color:#6a0dad;">Reset Your Password</h2>
+            <p>Hello ${user.name},</p>
+            <p>Click the button below to reset your password:</p>
+            <a href="${resetUrl}" style="display:inline-block; background:#6a0dad; color:white; padding:10px 20px; border-radius:5px; text-decoration:none;">Reset Password</a>
+            <p style="margin-top:20px; color:#555;">If you did not request this, please ignore this email.</p>
+          </div>
+        `
+      });
+  
+      res.status(200).json({ message: 'Reset password email sent' });
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+
+  // POST /reset-password/:token
+router.post('/reset-password/:token', async (req, res) => {
+    try {
+      const tokenDoc = await PasswordResetToken.findOne({ token: req.params.token });
+      if (!tokenDoc) return res.status(400).json({ message: 'Invalid or expired token' });
+  
+      const user = await User.findById(tokenDoc.userId);
+      if (!user) return res.status(400).json({ message: 'User not found' });
+  
+      const { newPassword } = req.body;
+      user.password = await bcrypt.hash(newPassword, 10);
+      await user.save();
+      await tokenDoc.deleteOne();
+  
+      res.status(200).json({ message: 'Password has been reset successfully' });
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  
 
 module.exports = router;
