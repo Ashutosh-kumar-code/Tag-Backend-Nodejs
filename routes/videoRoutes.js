@@ -38,8 +38,8 @@ const videoStorage = new CloudinaryStorage({
   // Combine both
 //   const uploadBoth = multer();
 
-  const videoUpload = multer({
-    storage: multer.diskStorage({}),
+const videoUpload = multer({
+    storage: multer.memoryStorage(),
   }).fields([
     { name: 'videoFile', maxCount: 1 },
     { name: 'thumbnailImage', maxCount: 1 }
@@ -57,6 +57,10 @@ router.post('/post/creator', videoUpload, async (req, res) => {
     if (!videoFile) {
       return res.status(400).json({ message: "No video file uploaded" });
     }
+    if (!videoFile?.buffer) {
+        return res.status(400).json({ message: "Video file buffer not found" });
+      }
+      
 
     // Upload video
     const videoUploadResult = await new Promise((resolve, reject) => {
