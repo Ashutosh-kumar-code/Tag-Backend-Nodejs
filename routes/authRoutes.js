@@ -533,7 +533,7 @@ router.post('/forgot-password', async (req, res) => {
       const resetToken = new PasswordResetToken({ userId: user._id, token });
       await resetToken.save();
   
-      const resetUrl = `https://tag-frontend.vercel.app/api/auth/reset-password/${token}`;
+      const resetUrl = `https://tag-backend.vercel.app/api/auth/reset-password/${token}`;
   
       await transporter.sendMail({
         from: '"Tag Support" <your_email@gmail.com>',
