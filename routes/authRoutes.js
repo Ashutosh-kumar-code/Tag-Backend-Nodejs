@@ -116,7 +116,7 @@ router.post('/resend-verification', async (req, res) => {
       });
       await verificationToken.save();
   
-      const verificationUrl = `https://tag-backend.vercel.app/verify-email/${token}`;
+      const verificationUrl = `https://tag-backend.vercel.app/api/auth/verify-email/${token}`;
   
       // Send email
       await transporter.sendMail({
