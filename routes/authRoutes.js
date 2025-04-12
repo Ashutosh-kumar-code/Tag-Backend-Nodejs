@@ -59,7 +59,7 @@ router.post('/signup', async (req, res) => {
         });
         await verificationToken.save();
 
-        const verificationUrl = `https://tag-backend.vercel.app/verify-email/${token}`;
+        const verificationUrl = `https://tag-backend.vercel.app/api/auth/verify-email/${token}`;
 
         // Send email
         await transporter.sendMail({
@@ -93,6 +93,48 @@ router.get('/verify-email/:token', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+router.post('/resend-verification', async (req, res) => {
+    try {
+      const { email } = req.body;
+  
+      // Check if user exists
+      const user = await User.findOne({ email });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+  
+      // Check if already verified
+      if (user.isVerified) return res.status(400).json({ message: 'Email already verified' });
+  
+      // Remove old token (optional: prevent clutter)
+      await VerificationToken.deleteMany({ userId: user._id });
+  
+      // Create new verification token
+      const token = crypto.randomBytes(32).toString('hex');
+      const verificationToken = new VerificationToken({
+        userId: user._id,
+        token
+      });
+      await verificationToken.save();
+  
+      const verificationUrl = `https://tag-backend.vercel.app/verify-email/${token}`;
+  
+      // Send email
+      await transporter.sendMail({
+        from: '"Tag Team" <your_email@gmail.com>',
+        to: email,
+        subject: 'Verify your email - New Link',
+        html: `<h2>Hello ${user.name}</h2>
+              <p>Here's your new verification link:</p>
+              <a href="${verificationUrl}">Verify Email</a>`
+      });
+  
+      res.status(200).json({ message: 'Verification email sent again. Please check your inbox.' });
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 
 // router.post('/login', async (req, res) => {
 //     try {
