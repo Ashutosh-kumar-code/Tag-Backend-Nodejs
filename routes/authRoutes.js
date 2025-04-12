@@ -57,10 +57,10 @@ router.post('/signup', async (req, res) => {
             to: email,
             subject: 'Verify your email - New Link',
             html: `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 40px;">
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 20px;">
               <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
                 <div style="background: #6a0dad; color: white; padding: 20px 30px;">
-                  <h1 style="margin: 0; font-size: 24px;">Tag App - Email Verification</h1>
+                  <h1 style="margin: 0; font-size: 20px;">Tag App - Email Verification</h1>
                 </div>
                 <div style="padding: 30px;">
                   <h2 style="color: #333;">Hello ${user.name},</h2>
@@ -104,8 +104,7 @@ router.get('/verify-email/:token', async (req, res) => {
               </div>
               <div style="padding: 30px; text-align: center;">
                 <p style="font-size: 16px; color: #555;">The verification link is invalid or has expired.</p>
-                <a href="https://yourfrontend.com/resend-verification" style="margin-top: 20px; display: inline-block; background-color: #6a0dad; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Resend Verification</a>
-              </div>
+                </div>
             </div>
           </div>
         `);
@@ -122,8 +121,7 @@ router.get('/verify-email/:token', async (req, res) => {
             </div>
             <div style="padding: 30px; text-align: center;">
               <p style="font-size: 16px; color: #555;">Your email has been verified successfully. You can now log in to your account.</p>
-              <a href="https://yourfrontend.com/login" style="margin-top: 20px; display: inline-block; background-color: #6a0dad; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Go to Login</a>
-            </div>
+             </div>
           </div>
         </div>
       `);
@@ -175,10 +173,10 @@ router.post('/resend-verification', async (req, res) => {
         to: email,
         subject: 'Verify your email - New Link',
         html: `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 40px;">
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 20px;">
           <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
             <div style="background: #6a0dad; color: white; padding: 20px 30px;">
-              <h1 style="margin: 0; font-size: 24px;">Tag App - Email Verification</h1>
+              <h1 style="margin: 0; font-size: 20px;">Tag App - Email Verification</h1>
             </div>
             <div style="padding: 30px;">
               <h2 style="color: #333;">Hello ${user.name},</h2>
