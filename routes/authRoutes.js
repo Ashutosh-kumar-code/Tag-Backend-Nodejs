@@ -9,6 +9,7 @@ const PasswordResetToken = require('../models/PasswordResetToken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const mongoose = require("mongoose");
+const cloudinary = require('../config/cloudinary');
 
 const router = express.Router();
 
