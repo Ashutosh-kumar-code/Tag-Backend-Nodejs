@@ -8,6 +8,7 @@ const VerificationToken = require('../models/VerificationToken');
 const PasswordResetToken = require('../models/PasswordResetToken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const mongoose = require("mongoose");
 
 const router = express.Router();
 
