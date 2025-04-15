@@ -480,8 +480,8 @@ router.get('/leaderboard', async (req, res) => {
                 let totalViews = 0;
 
                 videos.forEach((video) => {
-                    totalLikes += video.likes.length;
-                    totalComments += video.comments.length;
+                    totalLikes += video.likes?.length;
+                    totalComments += video.comments?.length;
                     totalViews += video.views || 0;
                 });
 
