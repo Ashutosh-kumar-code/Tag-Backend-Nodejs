@@ -1,5 +1,6 @@
 const express = require('express');
 const Video = require('../models/Video');
+const User = require('../models/User');
 const Admin = require('../models/Admin');
 const multer = require('multer');
 const path = require('path');
@@ -228,10 +229,13 @@ router.get('/list/videos', async (req, res) => {
 });
 
 // DELETE Video (Owner Only)
+
 router.delete('/delete/:videoId', async (req, res) => {
     try {
         const { videoId } = req.params;
-        const { userId } = req.body; // User making the request
+        const { userId } = req.body; // Ensure you're sending this in request body
+
+        console.log("Request to delete video:", { videoId, userId });
 
         if (!mongoose.Types.ObjectId.isValid(videoId)) {
             return res.status(400).json({ message: "Invalid videoId format" });
@@ -250,37 +254,99 @@ router.delete('/delete/:videoId', async (req, res) => {
         }
 
         // Check if the user is the owner (creator/brand)
-        if (
+        const isOwner =
             (video.creatorId && video.creatorId.toString() === userId) ||
-            (video.brandId && video.brandId.toString() === userId)
-        ) {
-            // 🔹 Delete the video file from Cloudinary
-            if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
-                const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Extract Cloudinary public_id
-                await cloudinary.uploader.destroy(`videos/${publicId}`, { resource_type: "video" });
-            } 
-            // 🔹 Delete the local file if stored locally
-            else {
-                const filePath = path.join(__dirname, '..', video.videoUrl);
-                fs.unlink(filePath, (err) => {
-                    if (err) {
-                        console.error("Error deleting file:", err);
-                    }
-                });
-            }
+            (video.brandId && video.brandId.toString() === userId);
 
-            // 🔹 Delete from MongoDB
-            await Video.findByIdAndDelete(videoId);
-            return res.json({ message: "Video deleted successfully" });
-        } else {
+        if (!isOwner) {
             return res.status(403).json({ message: "Unauthorized to delete this video" });
         }
 
+        // 🔹 Delete the video file from Cloudinary
+        if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
+            const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Ensure publicId is correct
+            console.log("Deleting from Cloudinary:", publicId);
+
+            await cloudinary.uploader.destroy(`videos/${publicId}`, {
+                resource_type: "video",
+            });
+        } 
+        // 🔹 Delete local file
+        else {
+            const filePath = path.join(__dirname, '..', video.videoUrl);
+            console.log("Deleting local file at:", filePath);
+
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath); // Use sync version for reliability
+            } else {
+                console.warn("File not found locally:", filePath);
+            }
+        }
+
+        // 🔹 Delete from MongoDB
+        await Video.findByIdAndDelete(videoId);
+
+        return res.json({ message: "Video deleted successfully" });
+
     } catch (error) {
-        console.error("Error deleting video:", error);
-        res.status(500).json({ message: "Server error", error });
+        console.error("🔥 Error deleting video:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 });
+
+// router.delete('/delete/:videoId', async (req, res) => {
+//     try {
+//         const { videoId } = req.params;
+//         const { userId } = req.body; // User making the request
+
+//         if (!mongoose.Types.ObjectId.isValid(videoId)) {
+//             return res.status(400).json({ message: "Invalid videoId format" });
+//         }
+
+//         // Fetch the video
+//         const video = await Video.findById(videoId);
+//         if (!video) {
+//             return res.status(404).json({ message: "Video not found" });
+//         }
+
+//         // Fetch the user
+//         const user = await User.findById(userId);
+//         if (!user) {
+//             return res.status(404).json({ message: "User not found" });
+//         }
+
+//         // Check if the user is the owner (creator/brand)
+//         if (
+//             (video.creatorId && video.creatorId.toString() === userId) ||
+//             (video.brandId && video.brandId.toString() === userId)
+//         ) {
+//             // 🔹 Delete the video file from Cloudinary
+//             if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
+//                 const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Extract Cloudinary public_id
+//                 await cloudinary.uploader.destroy(`videos/${publicId}`, { resource_type: "video" });
+//             } 
+//             // 🔹 Delete the local file if stored locally
+//             else {
+//                 const filePath = path.join(__dirname, '..', video.videoUrl);
+//                 fs.unlink(filePath, (err) => {
+//                     if (err) {
+//                         console.error("Error deleting file:", err);
+//                     }
+//                 });
+//             }
+
+//             // 🔹 Delete from MongoDB
+//             await Video.findByIdAndDelete(videoId);
+//             return res.json({ message: "Video deleted successfully" });
+//         } else {
+//             return res.status(403).json({ message: "Unauthorized to delete this video" });
+//         }
+
+//     } catch (error) {
+//         console.error("Error deleting video:", error);
+//         res.status(500).json({ message: "Server error", error });
+//     }
+// });
 
 
 // DELETE Video (Admin Only)
