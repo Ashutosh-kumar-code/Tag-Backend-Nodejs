@@ -201,7 +201,7 @@ router.post('/list', async (req, res) => {
             filter.category = { $regex: category, $options: 'i' };
         }
         
-        const videos = await Video.find(filter).sort({ createdAt: -1 }).populate('creatorId', 'name', 'image').populate('brandId', 'companyName');
+        const videos = await Video.find(filter).sort({ createdAt: -1 }).populate('creatorId', 'name, image').populate('brandId', 'companyName');
         res.json(videos);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -211,7 +211,7 @@ router.post('/list', async (req, res) => {
 // Get all short videos
 router.get('/list/shorts', async (req, res) => {
     try {
-        const shorts = await Video.find({ type: 'short' }).populate('creatorId', 'name', 'image').populate('brandId', 'companyName');
+        const shorts = await Video.find({ type: 'short' }).populate('creatorId', 'name, image').populate('brandId', 'companyName');
         res.json(shorts);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -221,7 +221,7 @@ router.get('/list/shorts', async (req, res) => {
 // Get all long videos
 router.get('/list/videos', async (req, res) => {
     try {
-        const videos = await Video.find({ type: 'video' }).populate('creatorId', 'name', 'image').populate('brandId', 'companyName');
+        const videos = await Video.find({ type: 'video' }).populate('creatorId', 'name, image').populate('brandId', 'companyName');
         res.json(videos);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
