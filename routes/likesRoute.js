@@ -45,6 +45,23 @@ router.get('/videos/:id/likes', async (req, res) => {
   }
 });
 
+// Check if a video is liked by a user
+router.get('/videos/:id/isliked/:userId', async (req, res) => {
+  const { id: videoId, userId } = req.params;
+
+  try {
+    const video = await Video.findById(videoId);
+    if (!video) return res.status(404).json({ message: 'Video not found' });
+
+    const liked = video.likes.includes(userId);
+
+    res.status(200).json({ liked });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // Add comment to a video
 router.post('/videos/:id/comments', async (req, res) => {
   const { userId, text } = req.body;
