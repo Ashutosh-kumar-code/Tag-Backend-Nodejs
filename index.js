@@ -119,6 +119,35 @@ app.get("/chatlist/:userId", async (req, res) => {
     }
 });
 
+// Send message via REST API
+app.post("/chat/send", async (req, res) => {
+    const { senderId, receiverId, text, type } = req.body;
+
+    if (!senderId || !receiverId || !text || !type) {
+        return res.status(400).json({ error: "All fields are required" });
+    }
+
+    try {
+        const newMessage = new Message({
+            senderId,
+            receiverId,
+            text,
+            type,
+            timestamp: new Date()
+        });
+
+        const savedMessage = await newMessage.save();
+
+        // Optionally, emit the message via Socket.io as well
+        io.to(receiverId).emit("receiveMessage", savedMessage);
+
+        res.status(201).json(savedMessage);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 
 
 // Real-time chat using Socket.io
