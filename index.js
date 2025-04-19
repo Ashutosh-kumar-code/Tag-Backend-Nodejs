@@ -111,13 +111,61 @@ app.get("/chatlist/:userId", async (req, res) => {
             if (msg.receiverId !== userId) chatUserIds.add(msg.receiverId);
         });
 
-        const users = await User.find({ _id: { $in: [...chatUserIds] } }).select("name email profileImage");
+        const userIdsArray = [...chatUserIds];
 
-        res.json(users);
+        const users = await User.find({ _id: { $in: userIdsArray } }).select("name email image");
+
+        // Get last message for each user
+        const chatSummaries = await Promise.all(users.map(async (user) => {
+            const lastMsg = await Message.findOne({
+                $or: [
+                    { senderId: userId, receiverId: user._id.toString() },
+                    { senderId: user._id.toString(), receiverId: userId }
+                ]
+            }).sort({ timestamp: -1 }); // latest first
+
+            return {
+                userId: user._id,
+                name: user.name,
+                email: user.email,
+                image: user.image,
+                lastMessageText: lastMsg?.text || "",
+                lastMessageTime: lastMsg ? new Date(lastMsg.timestamp).toISOString() : null
+            };
+        }));
+
+        res.json(chatSummaries);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
+
+// app.get("/chatlist/:userId", async (req, res) => {
+//     const { userId } = req.params;
+
+//     try {
+//         const messages = await Message.find({
+//             $or: [
+//                 { senderId: userId },
+//                 { receiverId: userId }
+//             ]
+//         });
+
+//         const chatUserIds = new Set();
+
+//         messages.forEach(msg => {
+//             if (msg.senderId !== userId) chatUserIds.add(msg.senderId);
+//             if (msg.receiverId !== userId) chatUserIds.add(msg.receiverId);
+//         });
+
+//         const users = await User.find({ _id: { $in: [...chatUserIds] } }).select("name email image");
+
+//         res.json(users);
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// });
 
 // Send message via REST API
 app.post("/chat/send", async (req, res) => {
