@@ -208,6 +208,36 @@ router.post('/list', async (req, res) => {
     }
 });
 
+router.post('/search', async (req, res) => {
+    try {
+        const { search } = req.body;
+
+        if (!search || search.trim() === '') {
+            return res.status(400).json({ message: 'Search query is required' });
+        }
+
+        const regex = new RegExp(search, 'i'); // Case-insensitive regex
+
+        const videos = await Video.find({
+            type: 'video',
+            $or: [
+                { title: regex },
+                { category: regex },
+                { description: regex }
+            ]
+        })
+        .sort({ createdAt: -1 })
+        .populate('creatorId', 'name image')
+        .populate('brandId', 'companyName');
+
+        res.json(videos);
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 // Get all short videos
 router.get('/list/shorts', async (req, res) => {
     try {
