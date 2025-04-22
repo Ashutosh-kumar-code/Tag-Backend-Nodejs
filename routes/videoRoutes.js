@@ -49,10 +49,10 @@ router.post('/post/creator', videoUpload, async (req, res) => {
     if (!videoFile) {
       return res.status(400).json({ message: "No video file uploaded" });
     }
-    const MAX_VIDEO_SIZE = 10 * 1024 * 1024; // 100MB
-    if (videoFile.size > MAX_VIDEO_SIZE) {
-      return res.status(400).json({ message: "Video file exceeds 100MB limit" });
-    }
+    // const MAX_VIDEO_SIZE = 10 * 1024 * 1024; // 100MB
+    // if (videoFile.size > MAX_VIDEO_SIZE) {
+    //   return res.status(400).json({ message: "Video file exceeds 100MB limit" });
+    // }
     if (!videoFile?.buffer) {
         return res.status(400).json({ message: "Video file buffer not found" });
       }
