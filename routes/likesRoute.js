@@ -128,7 +128,8 @@ router.get('/videos/:id/comments', async (req, res) => {
       // Find related videos (same category, exclude current video)
       const relatedVideos = await Video.find({
         _id: { $ne: videoId },
-        category: currentVideo.category
+        category: currentVideo.category,
+        type: "video"
       })
       .populate({
         path: 'creatorId',
