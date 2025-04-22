@@ -12,113 +12,184 @@ const streamifier = require('streamifier');
 
 const router = express.Router();
 
-const videoStorage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-      folder: 'videos',
-      resource_type: 'video',
-      format: async () => 'mp4',
-      public_id: () => `video_${Date.now()}`
-    }
-  });
-  
-  const imageStorage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-      folder: 'thumbnails',
-      resource_type: 'image',
-      format: async () => 'jpg',
-      public_id: () => `thumbnail_${Date.now()}`
-    }
-  });
 
+// Memory storage for multer
 const videoUpload = multer({
-    storage: multer.memoryStorage(),
+    storage: multer.memoryStorage()
   }).fields([
     { name: 'videoFile', maxCount: 1 },
     { name: 'thumbnailImage', maxCount: 1 }
   ]);
-
-
-
-router.post('/post/creator', videoUpload, async (req, res) => {
-  try {
-    const { creatorId, brandId, title, description, category, type } = req.body;
-
-    const videoFile = req.files?.videoFile?.[0];
-    const thumbnailFile = req.files?.thumbnailImage?.[0];
-
-    if (!videoFile) {
-      return res.status(400).json({ message: "No video file uploaded" });
-    }
-    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-    if (videoFile.size > MAX_VIDEO_SIZE) {
-      return res.status(400).json({ message: "Video file exceeds 100MB limit" });
-    }
-    if (!videoFile?.buffer) {
-        return res.status(400).json({ message: "Video file buffer not found" });
-      }
-      
-
-    // Upload video
-    const videoUploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
+  
+  // Function to upload buffer to Cloudinary
+  const uploadToCloudinary = (buffer, folder, resourceType, publicId) => {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
         {
-          folder: 'videos',
-          resource_type: 'video',
-          public_id: `video_${Date.now()}`
+          resource_type: resourceType,
+          folder: folder,
+          public_id: publicId,
         },
         (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
+          if (result) resolve(result);
+          else reject(error);
         }
       );
-      streamifier.createReadStream(videoFile.buffer).pipe(uploadStream);
+      streamifier.createReadStream(buffer).pipe(stream);
     });
-
-    let thumbnailUrl = '';
-    if (thumbnailFile) {
-      const thumbnailUploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'thumbnails',
-            resource_type: 'image',
-            public_id: `thumbnail_${Date.now()}`
-          },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
-        streamifier.createReadStream(thumbnailFile.buffer).pipe(uploadStream);
+  };
+  
+  // ✅ /post/creator route
+  router.post('/post/creator', videoUpload, async (req, res) => {
+    try {
+      const { videoFile, thumbnailImage } = req.files;
+  
+      if (!videoFile || !thumbnailImage) {
+        return res.status(400).json({ error: 'Both video and thumbnail are required' });
+      }
+  
+      // Upload video and image
+      const uploadedVideo = await uploadToCloudinary(
+        videoFile[0].buffer,
+        'videos',
+        'video',
+        `video_${Date.now()}`
+      );
+  
+      const uploadedThumbnail = await uploadToCloudinary(
+        thumbnailImage[0].buffer,
+        'thumbnails',
+        'image',
+        `thumbnail_${Date.now()}`
+      );
+  
+      // Save to MongoDB
+      const newVideo = new Video({
+        title: req.body.title,
+        description: req.body.description,
+        category: req.body.category,
+        tags: req.body.tags?.split(','), // Optional
+        videoUrl: uploadedVideo.secure_url,
+        thumbnailUrl: uploadedThumbnail.secure_url,
+        uploadedBy: req.body.uploadedBy, // Make sure frontend sends this
       });
-      thumbnailUrl = thumbnailUploadResult.secure_url;
+  
+      await newVideo.save();
+  
+      res.status(200).json({ message: 'Video posted successfully', data: newVideo });
+    } catch (err) {
+      console.error('Error in /post/creator:', err);
+      res.status(500).json({ error: 'Internal server error' });
     }
+  });
 
-    // Save to DB
-    const newVideo = new Video({
-      creatorId,
-      brandId,
-      title,
-      description,
-      videoUrl: videoUploadResult.secure_url,
-      thumbnailUrl,
-      category,
-      type
-    });
 
-    await newVideo.save();
+// const videoStorage = new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//       folder: 'videos',
+//       resource_type: 'video',
+//       format: async () => 'mp4',
+//       public_id: () => `video_${Date.now()}`
+//     }
+//   });
+  
+//   const imageStorage = new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//       folder: 'thumbnails',
+//       resource_type: 'image',
+//       format: async () => 'jpg',
+//       public_id: () => `thumbnail_${Date.now()}`
+//     }
+//   });
 
-    res.status(201).json({ message: 'Video uploaded with thumbnail!', video: newVideo });
+// const videoUpload = multer({
+//     storage: multer.memoryStorage(),
+//   }).fields([
+//     { name: 'videoFile', maxCount: 1 },
+//     { name: 'thumbnailImage', maxCount: 1 }
+//   ]);
 
-  } catch (err) {
-    console.error("Upload Error:", err);
-    res.status(500).json({ message: 'Server error', error: err });
-  }
-});
+// router.post('/post/creator', videoUpload, async (req, res) => {
+//   try {
+//     const { creatorId, brandId, title, description, category, type } = req.body;
+
+//     const videoFile = req.files?.videoFile?.[0];
+//     const thumbnailFile = req.files?.thumbnailImage?.[0];
+
+//     if (!videoFile) {
+//       return res.status(400).json({ message: "No video file uploaded" });
+//     }
+//     const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+//     if (videoFile.size > MAX_VIDEO_SIZE) {
+//       return res.status(400).json({ message: "Video file exceeds 100MB limit" });
+//     }
+//     if (!videoFile?.buffer) {
+//         return res.status(400).json({ message: "Video file buffer not found" });
+//       }
+      
+
+//     // Upload video
+//     const videoUploadResult = await new Promise((resolve, reject) => {
+//       const uploadStream = cloudinary.uploader.upload_stream(
+//         {
+//           folder: 'videos',
+//           resource_type: 'video',
+//           public_id: `video_${Date.now()}`
+//         },
+//         (error, result) => {
+//           if (error) return reject(error);
+//           resolve(result);
+//         }
+//       );
+//       streamifier.createReadStream(videoFile.buffer).pipe(uploadStream);
+//     });
+
+//     let thumbnailUrl = '';
+//     if (thumbnailFile) {
+//       const thumbnailUploadResult = await new Promise((resolve, reject) => {
+//         const uploadStream = cloudinary.uploader.upload_stream(
+//           {
+//             folder: 'thumbnails',
+//             resource_type: 'image',
+//             public_id: `thumbnail_${Date.now()}`
+//           },
+//           (error, result) => {
+//             if (error) return reject(error);
+//             resolve(result);
+//           }
+//         );
+//         streamifier.createReadStream(thumbnailFile.buffer).pipe(uploadStream);
+//       });
+//       thumbnailUrl = thumbnailUploadResult.secure_url;
+//     }
+
+//     // Save to DB
+//     const newVideo = new Video({
+//       creatorId,
+//       brandId,
+//       title,
+//       description,
+//       videoUrl: videoUploadResult.secure_url,
+//       thumbnailUrl,
+//       category,
+//       type
+//     });
+
+//     await newVideo.save();
+
+//     res.status(201).json({ message: 'Video uploaded Successfully', video: newVideo });
+
+//   } catch (err) {
+//     console.error("Upload Error:", err);
+//     res.status(500).json({ message: 'Server error', error: err });
+//   }
+// });
 
 
 // SHOW ALL VIDEOS LIST
+
 router.get('/all', async (req, res) => {
     try {
         const videos = await Video.find();
