@@ -121,58 +121,6 @@ router.post('/post/creator', videoUpload, async (req, res) => {
 });
 
 
-// const storage = new CloudinaryStorage({
-//     cloudinary: cloudinary,
-//     params: {
-//         folder: 'videos', // Folder in Cloudinary
-//         resource_type: 'video', // Ensure videos are properly uploaded
-//         format: async (req, file) => 'mp4', // Set default format
-//         public_id: (req, file) => Date.now(), // Unique filename
-//     },
-// });
-
-// const upload = multer({ storage });
-
-// // 🔹 Upload Video API (Fix for Vercel)
-// router.post('/post/creator', upload.single('videoFile'), async (req, res) => {
-//     try {
-//         const { creatorId, brandId, title, description, category, type, thumbnailUrl } = req.body;
-
-//         if (!req.file) {
-//             return res.status(400).json({ message: "No video file uploaded" });
-//         }
-
-//         console.log("Uploaded File:", req.file); // Debugging
-
-//         // Cloudinary returns `req.file.path.secure_url`
-//         const videoUrl = req.file.path || req.file.secure_url;
-
-//         if (!videoUrl) {
-//             return res.status(500).json({ message: "Error retrieving Cloudinary URL" });
-//         }
-
-//         // Save video data to MongoDB
-//         let newVideo;
-//         if (creatorId && brandId) {
-//             newVideo = new Video({ creatorId, brandId, title, description, videoUrl, thumbnailUrl, category, type });
-//         } else if (creatorId) {
-//             newVideo = new Video({ creatorId, title, description, videoUrl, thumbnailUrl, category, type });
-//         } else if (brandId) {
-//             newVideo = new Video({ brandId, title, description, videoUrl, thumbnailUrl, category, type });
-//         }
-
-//         await newVideo.save();
-
-//         res.status(201).json({ message: 'Video uploaded successfully', video: newVideo });
-
-//     } catch (error) {
-//         console.error("Error uploading video:", error);
-//         res.status(500).json({ message: 'Server error', error });
-//     }
-// });
-
-
-
 // SHOW ALL VIDEOS LIST
 router.get('/all', async (req, res) => {
     try {
@@ -185,28 +133,89 @@ router.get('/all', async (req, res) => {
 
 
 // Get all videos with optional filtering by category, type, creator, or brand
+
 router.post('/list', async (req, res) => {
     try {
-        const { category,title, type, creatorId, brandId } = req.body;
-   
+        const { category, title, type, creatorId, brandId, userId } = req.body;
+
         const filter = {};
-      
+
         if (type) filter.type = type;
         if (creatorId) filter.creatorId = creatorId;
         if (brandId) filter.brandId = brandId;
         if (title) {
-            filter.title = { $regex: title, $options: 'i' }; // 'i' = case-insensitive
+            filter.title = { $regex: title, $options: 'i' };
         }
         if (category) {
             filter.category = { $regex: category, $options: 'i' };
         }
-        
-        const videos = await Video.find(filter).sort({ createdAt: -1 }).populate('creatorId', 'name image').populate('brandId', 'companyName');
-        res.json(videos);
+
+        // If userId is passed, prioritize followed users' videos
+        if (userId) {
+            const user = await User.findById(userId).select('following');
+
+            const followedUserIds = user?.following || [];
+
+            // Get followed users' videos
+            const followedVideos = await Video.find({
+                ...filter,
+                creatorId: { $in: followedUserIds }
+            })
+            .sort({ createdAt: -1 })
+            .populate('creatorId', 'name image')
+            .populate('brandId', 'companyName');
+
+            // Get other videos not in followed list
+            const otherVideos = await Video.find({
+                ...filter,
+                $or: [
+                    { creatorId: { $nin: followedUserIds } },
+                    { creatorId: { $exists: false } } // also include videos without creatorId
+                ]
+            })
+            .sort({ createdAt: -1 })
+            .populate('creatorId', 'name image')
+            .populate('brandId', 'companyName');
+
+            // Combine both
+            const videos = [...followedVideos, ...otherVideos];
+            return res.json(videos);
+        } else {
+            // No userId passed, return normally filtered list
+            const videos = await Video.find(filter)
+                .sort({ createdAt: -1 })
+                .populate('creatorId', 'name image')
+                .populate('brandId', 'companyName');
+            return res.json(videos);
+        }
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// router.post('/list', async (req, res) => {
+//     try {
+//         const { category,title, type, creatorId, brandId } = req.body;
+   
+//         const filter = {};
+      
+//         if (type) filter.type = type;
+//         if (creatorId) filter.creatorId = creatorId;
+//         if (brandId) filter.brandId = brandId;
+//         if (title) {
+//             filter.title = { $regex: title, $options: 'i' }; // 'i' = case-insensitive
+//         }
+//         if (category) {
+//             filter.category = { $regex: category, $options: 'i' };
+//         }
+        
+//         const videos = await Video.find(filter).sort({ createdAt: -1 }).populate('creatorId', 'name image').populate('brandId', 'companyName');
+//         res.json(videos);
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 router.post('/search', async (req, res) => {
     try {
@@ -323,60 +332,6 @@ router.delete('/delete/:videoId', async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
-
-// router.delete('/delete/:videoId', async (req, res) => {
-//     try {
-//         const { videoId } = req.params;
-//         const { userId } = req.body; // User making the request
-
-//         if (!mongoose.Types.ObjectId.isValid(videoId)) {
-//             return res.status(400).json({ message: "Invalid videoId format" });
-//         }
-
-//         // Fetch the video
-//         const video = await Video.findById(videoId);
-//         if (!video) {
-//             return res.status(404).json({ message: "Video not found" });
-//         }
-
-//         // Fetch the user
-//         const user = await User.findById(userId);
-//         if (!user) {
-//             return res.status(404).json({ message: "User not found" });
-//         }
-
-//         // Check if the user is the owner (creator/brand)
-//         if (
-//             (video.creatorId && video.creatorId.toString() === userId) ||
-//             (video.brandId && video.brandId.toString() === userId)
-//         ) {
-//             // 🔹 Delete the video file from Cloudinary
-//             if (video.videoUrl.startsWith("https://res.cloudinary.com/")) {
-//                 const publicId = video.videoUrl.split('/').pop().split('.')[0]; // Extract Cloudinary public_id
-//                 await cloudinary.uploader.destroy(`videos/${publicId}`, { resource_type: "video" });
-//             } 
-//             // 🔹 Delete the local file if stored locally
-//             else {
-//                 const filePath = path.join(__dirname, '..', video.videoUrl);
-//                 fs.unlink(filePath, (err) => {
-//                     if (err) {
-//                         console.error("Error deleting file:", err);
-//                     }
-//                 });
-//             }
-
-//             // 🔹 Delete from MongoDB
-//             await Video.findByIdAndDelete(videoId);
-//             return res.json({ message: "Video deleted successfully" });
-//         } else {
-//             return res.status(403).json({ message: "Unauthorized to delete this video" });
-//         }
-
-//     } catch (error) {
-//         console.error("Error deleting video:", error);
-//         res.status(500).json({ message: "Server error", error });
-//     }
-// });
 
 
 // DELETE Video (Admin Only)
