@@ -12,6 +12,7 @@ const streamifier = require('streamifier');
 
 const router = express.Router();
 
+
 const videoStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -31,6 +32,12 @@ const videoStorage = new CloudinaryStorage({
       public_id: () => `thumbnail_${Date.now()}`
     }
   });
+  
+//   const uploadVideo = multer({ storage: videoStorage });
+//   const uploadImage = multer({ storage: imageStorage });
+  
+  // Combine both
+//   const uploadBoth = multer();
 
 const videoUpload = multer({
     storage: multer.memoryStorage(),
@@ -38,6 +45,8 @@ const videoUpload = multer({
     { name: 'videoFile', maxCount: 1 },
     { name: 'thumbnailImage', maxCount: 1 }
   ]);
+
+
 
 router.post('/post/creator', videoUpload, async (req, res) => {
   try {
@@ -49,10 +58,6 @@ router.post('/post/creator', videoUpload, async (req, res) => {
     if (!videoFile) {
       return res.status(400).json({ message: "No video file uploaded" });
     }
-    // const MAX_VIDEO_SIZE = 10 * 1024 * 1024; // 100MB
-    // if (videoFile.size > MAX_VIDEO_SIZE) {
-    //   return res.status(400).json({ message: "Video file exceeds 100MB limit" });
-    // }
     if (!videoFile?.buffer) {
         return res.status(400).json({ message: "Video file buffer not found" });
       }
@@ -107,7 +112,7 @@ router.post('/post/creator', videoUpload, async (req, res) => {
 
     await newVideo.save();
 
-    res.status(201).json({ message: 'Video uploaded Successfully', video: newVideo });
+    res.status(201).json({ message: 'Video uploaded with thumbnail!', video: newVideo });
 
   } catch (err) {
     console.error("Upload Error:", err);
